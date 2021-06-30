@@ -9,7 +9,7 @@ import java.io.RandomAccessFile;
 
 public class FileUploadServerHandler extends ChannelInboundHandlerAdapter {
     private int byteRead;
-    private volatile int start = 0;
+    private volatile long start = 0;
     private String file_dir = "E:\\dems";
     private RandomAccessFile randomAccessFile;
 

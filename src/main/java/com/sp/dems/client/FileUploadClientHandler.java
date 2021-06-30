@@ -1,20 +1,27 @@
 package com.sp.dems.client;
 
-import com.sp.demsfile.netty.vo.FileUploadFile;
 import com.sp.dems.win.WinClientMain;
+import com.sp.demsfile.netty.vo.FileUploadFile;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.text.DecimalFormat;
 
 public class FileUploadClientHandler extends ChannelInboundHandlerAdapter {
+    // 每一次发送预读取字节数量
     private int byteRead;
-    private volatile int start = 0;
+    // 每一个文件已发送的字节数量
+    private volatile long start = 0;
+    // 每一次发送实际取字节数量
     private volatile int lastLength = 0;
     public RandomAccessFile randomAccessFile;
+    // 传输对象
     private FileUploadFile fileUploadFile;
+
+    DecimalFormat df = new DecimalFormat("#.00");
 
     public FileUploadClientHandler(FileUploadFile ef) {
         if (ef.getFile().exists()) {
@@ -31,7 +38,8 @@ public class FileUploadClientHandler extends ChannelInboundHandlerAdapter {
         try {
             randomAccessFile = new RandomAccessFile(fileUploadFile.getFile(), "r");
             randomAccessFile.seek(fileUploadFile.getStarPos());
-            lastLength = (int) randomAccessFile.length() / 10;
+            long length = randomAccessFile.length() / 100;
+            lastLength = length > (Integer.MAX_VALUE / 2) ? Integer.MAX_VALUE / 2 : (int)length;
             byte[] bytes = new byte[lastLength];
             if ((byteRead = randomAccessFile.read(bytes)) != -1) {
                 fileUploadFile.setEndPos(byteRead);
@@ -49,23 +57,26 @@ public class FileUploadClientHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        if (msg instanceof Integer) {
-            start = (Integer) msg;
+        if (msg instanceof Long) {
+            start =  (Long)msg;
             if (start != -1) {
-                WinClientMain.setPb(start);
                 randomAccessFile = new RandomAccessFile(fileUploadFile.getFile(), "r");
+                WinClientMain.setPb((long) (Double.valueOf(start) / Double.valueOf(randomAccessFile.length()) * 100));
                 randomAccessFile.seek(start);
-                System.out.println("块儿长度：" + (randomAccessFile.length() / 10));
-                System.out.println("长度：" + (randomAccessFile.length() - start));
-                int a = (int) (randomAccessFile.length() - start);
-                int b = (int) (randomAccessFile.length() / 10);
+                long a = randomAccessFile.length() - start;
+                long length = randomAccessFile.length() / 100;
+                int b = length > (Integer.MAX_VALUE / 2) ? Integer.MAX_VALUE / 2 : (int)length;
+
+                System.out.println("本次块儿长度：" + b);
+                System.out.println("剩余长度：" + a);
+                System.out.println("文件总长度：" + randomAccessFile.length());
+
                 if (a < b) {
-                    lastLength = a;
+                    lastLength = (int)a;
                 }
                 byte[] bytes = new byte[lastLength];
-                System.out.println("-----------------------------" + bytes.length);
-                if ((byteRead = randomAccessFile.read(bytes)) != -1 && (randomAccessFile.length() - start) > 0) {
-                    System.out.println("byte 长度：" + bytes.length);
+                if ((byteRead = randomAccessFile.read(bytes)) > 0 && a > 0) {
+                    System.out.println("发送 byte 长度：" + bytes.length);
                     fileUploadFile.setEndPos(byteRead);
                     fileUploadFile.setBytes(bytes);
                     try {
@@ -84,6 +95,7 @@ public class FileUploadClientHandler extends ChannelInboundHandlerAdapter {
         }
     }
 
+    @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         cause.printStackTrace();
         ctx.close();

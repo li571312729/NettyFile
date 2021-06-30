@@ -1,9 +1,13 @@
 package com.sp.data;
 
-import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 
 public class TestMain {
+
+    static DecimalFormat df = new DecimalFormat("#.00");
+
+
     public static void main(String[] args) throws IOException {
 //        SqlSession sqlSession = SessionUtil.getSession();
 //        TestMapper mapper = sqlSession.getMapper(TestMapper.class);
@@ -12,11 +16,13 @@ public class TestMain {
 //            System.out.println(item);
 //        });
 //        SessionUtil.closeSession(sqlSession);
+        long length = 11L;
+        long aa = 24L;
 
-        File file = new File("E:\\dems\\test.txt");
-        if(!file.exists()){
-            file.createNewFile();
-        }
+        int b = 12;
+        int d = 24;
+        System.out.println((long) (Double.valueOf(length) / Double.valueOf(aa) * 100));
+            System.out.println(b/d);
 
     }
 }
